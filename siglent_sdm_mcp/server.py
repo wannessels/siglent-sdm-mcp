@@ -14,7 +14,7 @@ import os
 import time
 from typing import Optional
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 
 from siglent_sdm_mcp.scpi_connection import SCPIConnection
 
@@ -518,19 +518,30 @@ async def monitor(
     interval_ms: int = 1000,
     duration_s: float = 10.0,
     range: Optional[str] = None,
+    ctx: Context = None,
 ) -> str:
     """Continuously measure for a fixed duration, returning a time-series of readings.
 
     Configures the instrument then takes repeated readings at the specified interval.
+    Reports progress to the client during execution so it knows the tool is still
+    active and how far along the measurement run is.
+
+    This tool blocks for the full duration — no other tools can run on this server
+    while monitoring. For short spot-checks use measure() or read() instead.
 
     Args:
         function: Measurement function (e.g. "VOLT:DC", "RES", "CURR:AC").
         interval_ms: Time between readings in milliseconds (minimum ~200ms practical).
-        duration_s: Total monitoring duration in seconds (max 300).
-        range: Measurement range. Omit for auto.
+        duration_s: Total monitoring duration in seconds (max 300). The tool will
+            take readings for this long before returning all results at once.
+        range: Measurement range (e.g. "10", "AUTO"). Omit for default/auto.
 
     Returns:
-        JSON with channel config and array of {time, value} readings.
+        JSON object with fields:
+            function: Human-readable measurement type
+            samples: Number of readings taken
+            duration_s: Actual elapsed time
+            readings: Array of {time, value} objects (time in seconds from start)
     """
     if duration_s > 300:
         return "Error: duration_s cannot exceed 300 seconds"
@@ -562,6 +573,15 @@ async def monitor(
                 "time": round(time.time() - start_time, 3),
                 "error": str(e),
             })
+
+        elapsed_total = time.time() - start_time
+        if ctx is not None:
+            progress = min(elapsed_total / duration_s, 1.0)
+            await ctx.report_progress(
+                progress=progress,
+                total=1.0,
+            )
+
         elapsed = asyncio.get_event_loop().time() - t0
         await asyncio.sleep(max(0, interval - elapsed))
 
