@@ -348,6 +348,86 @@ async def set_autorange(function: str, enabled: bool = True) -> str:
     return f"Autorange {'enabled' if enabled else 'disabled'} for {FUNCTIONS.get(func, func)}"
 
 
+@mcp.tool()
+async def set_ac_bandwidth(bandwidth: str = "20") -> str:
+    """Set the AC filter bandwidth for AC voltage and AC current measurements.
+
+    Lower bandwidth = more accurate RMS for low-frequency signals but slower.
+    Higher bandwidth = faster but less accurate for low frequencies.
+
+    Applies to the currently configured AC function (VOLT:AC or CURR:AC).
+
+    Args:
+        bandwidth: Filter bandwidth — "20" (20Hz, slow/accurate) or "200" (200Hz, fast).
+    """
+    bw = bandwidth.strip()
+    if bw not in ("20", "200"):
+        return "Error: bandwidth must be '20' (20Hz) or '200' (200Hz)"
+    c = _get_conn()
+    # Determine which AC function is active
+    cfg = await c.query("CONFigure?")
+    if "AC" not in cfg.upper():
+        return "Error: no AC function configured. Use configure() with VOLT:AC or CURR:AC first."
+    if "VOLT" in cfg.upper():
+        await c.write(f"VOLTage:AC:BANDwidth {bw}")
+    else:
+        await c.write(f"CURRent:AC:BANDwidth {bw}")
+    return f"AC bandwidth set to {bw}Hz"
+
+
+@mcp.tool()
+async def get_ac_bandwidth() -> str:
+    """Query the current AC filter bandwidth setting.
+
+    Returns the bandwidth in Hz for the active AC function.
+    """
+    c = _get_conn()
+    cfg = await c.query("CONFigure?")
+    if "AC" not in cfg.upper():
+        return "Error: no AC function configured."
+    if "VOLT" in cfg.upper():
+        return await c.query("VOLTage:AC:BANDwidth?")
+    return await c.query("CURRent:AC:BANDwidth?")
+
+
+@mcp.tool()
+async def set_frequency_aperture(aperture: float = 0.1) -> str:
+    """Set the gate time (aperture) for frequency and period measurements.
+
+    Longer aperture = better resolution but slower. Shorter = faster but less precise.
+
+    Applies to the currently configured function (FREQ or PER).
+
+    Args:
+        aperture: Gate time in seconds — 0.01, 0.1, or 1.0.
+    """
+    if aperture not in (0.01, 0.1, 1.0):
+        return "Error: aperture must be 0.01, 0.1, or 1.0 seconds"
+    c = _get_conn()
+    cfg = await c.query("CONFigure?")
+    cfg_upper = cfg.upper()
+    if "FREQ" in cfg_upper:
+        await c.write(f"FREQuency:APERture {aperture}")
+    elif "PER" in cfg_upper:
+        await c.write(f"PERiod:APERture {aperture}")
+    else:
+        return "Error: no frequency/period function configured. Use configure() with FREQ or PER first."
+    return f"Aperture set to {aperture}s"
+
+
+@mcp.tool()
+async def get_frequency_aperture() -> str:
+    """Query the current gate time (aperture) for frequency/period measurements."""
+    c = _get_conn()
+    cfg = await c.query("CONFigure?")
+    cfg_upper = cfg.upper()
+    if "FREQ" in cfg_upper:
+        return await c.query("FREQuency:APERture?")
+    elif "PER" in cfg_upper:
+        return await c.query("PERiod:APERture?")
+    return "Error: no frequency/period function configured."
+
+
 # ---------------------------------------------------------------------------
 # Trigger & Sampling
 # ---------------------------------------------------------------------------
