@@ -26,18 +26,23 @@ class SCPIConnection:
         await self._drain_banner()
 
     async def _drain_banner(self):
-        """Read and discard the welcome banner sent on connection."""
+        """Read and discard the welcome banner sent on connection.
+
+        The SDM sends: b"Welcome to the SCPI instrument '...'\r\n>>"
+        Note: no newline after ">>" — we read until we see ">>" in the buffer.
+        """
+        buf = b""
         try:
-            while True:
-                line = await asyncio.wait_for(
-                    self._reader.readline(),
-                    timeout=1.0,
+            while b">>" not in buf:
+                chunk = await asyncio.wait_for(
+                    self._reader.read(256),
+                    timeout=2.0,
                 )
-                text = line.decode("ascii", errors="replace").strip()
-                if text.startswith(">>") or not text:
+                if not chunk:
                     break
+                buf += chunk
         except asyncio.TimeoutError:
-            pass  # No more banner data
+            pass
 
     async def disconnect(self):
         if self._writer:
@@ -64,7 +69,7 @@ class SCPIConnection:
                     self._reader.readline(),
                     timeout=self.timeout,
                 )
-                return response.decode("ascii").strip()
+                return response.decode("ascii").strip().lstrip("\x00")
             except asyncio.TimeoutError:
                 await self.disconnect()
                 raise
