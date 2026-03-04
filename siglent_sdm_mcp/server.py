@@ -136,6 +136,38 @@ async def get_error() -> str:
 
 
 @mcp.tool()
+async def disconnect() -> str:
+    """Disconnect from the instrument, unlocking the front panel.
+
+    The SDM locks its front panel UI while a remote TCP connection is active.
+    Call this tool to release the instrument for manual use. The connection
+    will be re-established automatically on the next tool call.
+    """
+    global conn
+    if conn is not None:
+        try:
+            await conn.write("SYSTem:LOCal")
+        except Exception:
+            pass
+        await conn.disconnect()
+        conn = None
+        return "Disconnected. Front panel unlocked."
+    return "Already disconnected."
+
+
+@mcp.tool()
+async def local() -> str:
+    """Switch the instrument to local mode, unlocking the front panel.
+
+    Unlike disconnect, this keeps the TCP connection open so subsequent
+    tool calls don't need to reconnect. The instrument returns to remote
+    mode automatically on the next SCPI command.
+    """
+    await _get_conn().write("SYSTem:LOCal")
+    return "Instrument switched to local mode. Front panel unlocked."
+
+
+@mcp.tool()
 async def set_display_text(text: str = "") -> str:
     """Show a text message on the instrument display, or clear it.
 
