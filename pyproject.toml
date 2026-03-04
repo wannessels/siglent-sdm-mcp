@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "siglent-sdm-mcp"
+version = "0.1.0"
+description = "MCP server for Siglent SDM series digital multimeters"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.10"
+keywords = ["mcp", "multimeter", "scpi", "siglent", "sdm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Interface Engine/Protocol Translator",
+]
+dependencies = [
+    "mcp>=1.2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/wannessels/siglent-sdm-mcp"
+Repository = "https://github.com/wannessels/siglent-sdm-mcp"
+Issues = "https://github.com/wannessels/siglent-sdm-mcp/issues"
+
+[project.scripts]
+siglent-sdm-mcp = "siglent_sdm_mcp.server:main"
+
+[tool.ruff]
+line-length = 120
